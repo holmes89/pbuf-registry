@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/google/uuid"
 	"github.com/pbufio/pbuf-registry/internal/data"
 	"github.com/pbufio/pbuf-registry/internal/model"
 )
@@ -234,17 +235,18 @@ func (d *driftRepo) SaveDriftEvents(ctx context.Context, events []model.DriftEve
 		return nil
 	}
 
-	const columnsPerRow = 8
+	const columnsPerRow = 9
 	args := make([]interface{}, 0, len(events)*columnsPerRow)
 	valueStrings := make([]string, 0, len(events))
 
 	for _, event := range events {
-		valueStrings = append(valueStrings, "(?,?,?,?,?,?,?,?)")
+		valueStrings = append(valueStrings, "(?,?,?,?,?,?,?,?,?)")
 
 		prevHash := event.PreviousHash
 		currHash := event.CurrentHash
 
 		args = append(args,
+			uuid.New().String(),
 			event.ModuleID,
 			event.TagID,
 			event.Filename,
@@ -257,7 +259,7 @@ func (d *driftRepo) SaveDriftEvents(ctx context.Context, events []model.DriftEve
 	}
 
 	query := fmt.Sprintf(`
-		INSERT INTO drift_events (module_id, tag_id, filename, event_type, previous_hash, current_hash, severity, detected_at)
+		INSERT INTO drift_events (id, module_id, tag_id, filename, event_type, previous_hash, current_hash, severity, detected_at)
 		VALUES %s
 		ON CONFLICT (tag_id, filename, event_type, previous_hash, current_hash) DO NOTHING
 	`, strings.Join(valueStrings, ", "))

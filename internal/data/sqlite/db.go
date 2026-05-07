@@ -53,11 +53,12 @@ func fmtTime(t time.Time) string {
 }
 
 func parseTime(s string) time.Time {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		return time.Time{}
+	for _, layout := range []string{time.RFC3339, "2006-01-02 15:04:05"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
 	}
-	return t
+	return time.Time{}
 }
 
 func sha256hex(s string) string {
