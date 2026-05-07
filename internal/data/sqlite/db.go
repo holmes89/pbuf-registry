@@ -19,12 +19,12 @@ func Open(path string) (*sql.DB, error) {
 	}
 
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("could not enable foreign keys: %w", err)
 	}
 
 	if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("could not enable WAL mode: %w", err)
 	}
 
@@ -42,10 +42,6 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
-}
-
-func now() string {
-	return time.Now().UTC().Format(time.RFC3339)
 }
 
 func fmtTime(t time.Time) string {

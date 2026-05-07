@@ -26,15 +26,15 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		panic(err)
+	}
 	path := f.Name()
-	defer os.Remove(path)
 
 	db, err := Open(path)
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
 
 	migrations.MigrateSQLite(db)
 
@@ -47,5 +47,8 @@ func TestMain(m *testing.M) {
 		drift:    NewDriftRepository(db, log.DefaultLogger),
 	}
 
-	os.Exit(m.Run())
+	code := m.Run()
+	_ = db.Close()
+	_ = os.Remove(path)
+	os.Exit(code)
 }

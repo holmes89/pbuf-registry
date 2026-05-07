@@ -24,5 +24,5 @@ func openSQLite(dsn string, logger log.Logger) (data.RepositorySet, func(), erro
 		Users:    NewUserRepository(db, logger),
 		ACL:      NewACLRepository(db, logger),
 		Drift:    NewDriftRepository(db, logger),
-	}, func() { db.Close() }, nil
+	}, func() { _ = db.Close() }, nil
 }

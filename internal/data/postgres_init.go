@@ -27,7 +27,10 @@ func openPostgres(dsn string, logger log.Logger) (RepositorySet, func(), error) 
 		return RepositorySet{}, nil, fmt.Errorf("failed to open sql.DB for migrations: %w", err)
 	}
 	migrations.Migrate(sqlDB)
-	sqlDB.Close()
+	if err := sqlDB.Close(); err != nil {
+		pool.Close()
+		return RepositorySet{}, nil, fmt.Errorf("failed to close migration db: %w", err)
+	}
 
 	return RepositorySet{
 		Registry: NewRegistryRepository(pool, logger),
