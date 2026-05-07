@@ -40,7 +40,7 @@ func (m *metadataRepo) GetUnprocessedTagIds(ctx context.Context) ([]string, erro
 		m.logger.Errorf("error getting unprocessed tag ids: %v", err)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var tagId string
@@ -65,7 +65,7 @@ func (m *metadataRepo) GetProtoFilesForTagId(ctx context.Context, tagId string) 
 		m.logger.Errorf("error getting proto files for tag id %s: %v", tagId, err)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var filename, content string
@@ -171,7 +171,7 @@ func (m *metadataRepo) GetParsedProtoFiles(ctx context.Context, tagId string) ([
 		m.logger.Errorf("error getting parsed proto files for tag id %s: %v", tagId, err)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var filename, protoJson string

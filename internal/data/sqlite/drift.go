@@ -44,7 +44,7 @@ func (d *driftRepo) GetTagsWithoutHashes(ctx context.Context) ([]string, error) 
 		d.logger.Errorf("error getting tags without hashes: %v", err)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var tagID string
@@ -83,7 +83,7 @@ func (d *driftRepo) ComputeAndStoreHashes(ctx context.Context, tagID string) err
 		d.logger.Errorf("error getting protofiles for tag %s: %v", tagID, err)
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type fileToHash struct {
 		id      string
@@ -182,7 +182,7 @@ func (d *driftRepo) GetFileHashesForTag(ctx context.Context, tagID string) (map[
 		d.logger.Errorf("error getting file hashes: %v", err)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var filename, hash string
@@ -213,7 +213,7 @@ func (d *driftRepo) GetProtoFileContents(ctx context.Context, tagID string) (map
 		d.logger.Errorf("error getting proto file contents: %v", err)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var filename, content string
@@ -291,7 +291,7 @@ func (d *driftRepo) GetUnacknowledgedDriftEvents(ctx context.Context) ([]model.D
 		d.logger.Errorf("error getting unacknowledged drift events: %v", err)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var event model.DriftEvent
@@ -359,7 +359,7 @@ func (d *driftRepo) GetDriftEventsForModule(ctx context.Context, moduleName stri
 		d.logger.Errorf("error getting drift events for module: %v", err)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var event model.DriftEvent
@@ -458,7 +458,7 @@ func (d *driftRepo) GetModuleDependencyDriftStatuses(ctx context.Context, module
 		d.logger.Errorf("error getting dependencies for module %s tag %s: %v", moduleName, resolvedTagName, err)
 		return nil, err
 	}
-	defer depRows.Close()
+	defer func() { _ = depRows.Close() }()
 
 	for depRows.Next() {
 		var dep dependencyRef
@@ -492,7 +492,7 @@ func (d *driftRepo) GetModuleDependencyDriftStatuses(ctx context.Context, module
 			var newerTagID string
 			var newerTagName string
 			if err := newerTagRows.Scan(&newerTagID, &newerTagName); err != nil {
-				newerTagRows.Close()
+				_ = newerTagRows.Close()
 				d.logger.Errorf("error scanning newer dependency tag for %s: %v", dep.name, err)
 				return nil, err
 			}
@@ -511,7 +511,7 @@ func (d *driftRepo) GetModuleDependencyDriftStatuses(ctx context.Context, module
 				WHERE module_id = ? AND tag_id = ?
 			`, dep.moduleID, newerTagID).Scan(&maxSeverityRank)
 			if err != nil {
-				newerTagRows.Close()
+				_ = newerTagRows.Close()
 				d.logger.Errorf("error getting drift severity for dependency %s target tag %s: %v", dep.name, newerTagName, err)
 				return nil, err
 			}
@@ -531,11 +531,11 @@ func (d *driftRepo) GetModuleDependencyDriftStatuses(ctx context.Context, module
 		}
 
 		if err := newerTagRows.Err(); err != nil {
-			newerTagRows.Close()
+			_ = newerTagRows.Close()
 			d.logger.Errorf("error iterating newer tags for dependency %s@%s: %v", dep.name, dep.tagName, err)
 			return nil, err
 		}
-		newerTagRows.Close()
+		_ = newerTagRows.Close()
 	}
 
 	return statuses, nil

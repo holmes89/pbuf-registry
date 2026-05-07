@@ -62,7 +62,7 @@ func (r *registryRepo) GetModule(ctx context.Context, name string) (*v1.Module, 
 		}
 		return nil, fmt.Errorf("could not select tags from database: %w", err)
 	}
-	defer tags.Close()
+	defer func() { _ = tags.Close() }()
 
 	for tags.Next() {
 		var tag string
@@ -83,7 +83,7 @@ func (r *registryRepo) GetModule(ctx context.Context, name string) (*v1.Module, 
 		}
 		return nil, fmt.Errorf("could not select draft tags from database: %w", err)
 	}
-	defer draftTags.Close()
+	defer func() { _ = draftTags.Close() }()
 
 	for draftTags.Next() {
 		var tag string
@@ -116,7 +116,7 @@ func (r *registryRepo) ListModules(ctx context.Context, pageSize int, token stri
 	if err != nil {
 		return nil, "", fmt.Errorf("could not select modules from database: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var rowsCount int
 	var nextPageToken string
@@ -275,7 +275,7 @@ func (r *registryRepo) PullModule(ctx context.Context, name string, tag string) 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not select protofiles from database: %w", err)
 	}
-	defer protofilesRows.Close()
+	defer func() { _ = protofilesRows.Close() }()
 
 	var protofiles []*v1.ProtoFile
 	for protofilesRows.Next() {
@@ -423,7 +423,7 @@ func (r *registryRepo) GetModuleDependencies(ctx context.Context, name string, t
 		}
 		return nil, fmt.Errorf("could not select dependencies from database: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var dependencyTagId string

@@ -84,7 +84,7 @@ func (r *aclRepo) ListUserPermissions(ctx context.Context, userID uuid.UUID) ([]
 	if err != nil {
 		return nil, fmt.Errorf("could not select permissions from database: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var entries []*model.ACLEntry
 	for rows.Next() {

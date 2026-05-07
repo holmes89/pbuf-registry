@@ -145,7 +145,7 @@ func (r *userRepo) ListUsers(ctx context.Context, limit int, offset int) ([]*mod
 	if err != nil {
 		return nil, fmt.Errorf("could not select users from database: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var users []*model.User
 	for rows.Next() {
