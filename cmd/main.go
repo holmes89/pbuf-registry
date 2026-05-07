@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"os"
 
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/lib/pq"
 	"github.com/pbufio/pbuf-registry/internal/background"
 	"github.com/pbufio/pbuf-registry/internal/config"
 	"github.com/pbufio/pbuf-registry/internal/data"
+	"github.com/pbufio/pbuf-registry/internal/data/sqlite"
 	"github.com/pbufio/pbuf-registry/internal/server"
+	"github.com/pbufio/pbuf-registry/migrations"
 )
 
 // go build -ldflags "-X main.Version=x.y.z"
@@ -39,18 +43,57 @@ func main() {
 	logger := log.DefaultLogger
 	logHelper := log.NewHelper(logger)
 
-	pool, err := pgxpool.New(context.Background(), config.Cfg.Data.Database.DSN)
-	if err != nil {
-		logHelper.Errorf("failed to connect to database: %v", err)
-		return
-	}
-	defer pool.Close()
+	var (
+		registryRepository data.RegistryRepository
+		metadataRepository data.MetadataRepository
+		userRepository     data.UserRepository
+		aclRepository      data.ACLRepository
+		driftRepository    data.DriftRepository
+	)
 
-	registryRepository := data.NewRegistryRepository(pool, logger)
-	metadataRepository := data.NewMetadataRepository(pool, logger)
-	userRepository := data.NewUserRepository(pool, logger)
-	aclRepository := data.NewACLRepository(pool, logger)
-	driftRepository := data.NewDriftRepository(pool, logger)
+	driver := config.Cfg.Data.Database.Driver
+	if driver == "" {
+		driver = "postgres"
+	}
+
+	switch driver {
+	case "sqlite":
+		db, err := sqlite.Open(config.Cfg.Data.Database.DSN)
+		if err != nil {
+			logHelper.Errorf("failed to open sqlite database: %v", err)
+			return
+		}
+		defer db.Close()
+		migrations.MigrateSQLite(db)
+		registryRepository = sqlite.NewRegistryRepository(db, logger)
+		metadataRepository = sqlite.NewMetadataRepository(db, logger)
+		userRepository = sqlite.NewUserRepository(db, logger)
+		aclRepository = sqlite.NewACLRepository(db, logger)
+		driftRepository = sqlite.NewDriftRepository(db, logger)
+
+	default:
+		pool, err := pgxpool.New(context.Background(), config.Cfg.Data.Database.DSN)
+		if err != nil {
+			logHelper.Errorf("failed to connect to database: %v", err)
+			return
+		}
+		defer pool.Close()
+
+		sqlDB, err := sql.Open("postgres", config.Cfg.Data.Database.DSN)
+		if err != nil {
+			logHelper.Errorf("failed to open sql.DB for migrations: %v", err)
+			return
+		}
+		migrations.Migrate(sqlDB)
+		sqlDB.Close()
+
+		registryRepository = data.NewRegistryRepository(pool, logger)
+		metadataRepository = data.NewMetadataRepository(pool, logger)
+		userRepository = data.NewUserRepository(pool, logger)
+		aclRepository = data.NewACLRepository(pool, logger)
+		driftRepository = data.NewDriftRepository(pool, logger)
+	}
+
 	registryServer := server.NewRegistryServer(registryRepository, metadataRepository, logger)
 	metadataServer := server.NewMetadataServer(registryRepository, metadataRepository, logger)
 	usersServer := server.NewUsersServer(userRepository, aclRepository, logger)
@@ -90,7 +133,7 @@ func main() {
 		protoParsingDaemon: background.NewProtoParsingDaemon(metadataRepository, driftRepository, logger),
 	}
 
-	err = CreateRootCommand(launcher).Execute()
+	err := CreateRootCommand(launcher).Execute()
 	if err != nil {
 		logHelper.Errorf("failed to run application: %v", err)
 	}

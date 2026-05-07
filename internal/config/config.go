@@ -44,7 +44,8 @@ type Config struct {
 
 	Data struct {
 		Database struct {
-			DSN string `mapstructure:"dsn"`
+			Driver string `mapstructure:"driver"` // "postgres" (default) or "sqlite"
+			DSN    string `mapstructure:"dsn"`
 		} `mapstructure:"database"`
 	} `mapstructure:"data"`
 

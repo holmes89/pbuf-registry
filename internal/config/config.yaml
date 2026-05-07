@@ -21,6 +21,7 @@ server:
 
 data:
   database:
+    driver: "postgres"
     dsn: "postgres://pbuf:pbuf@localhost:5432/pbuf_registry?sslmode=disable"
 
 daemons:
