@@ -28,6 +28,14 @@ func Open(path string) (*sql.DB, error) {
 		return nil, fmt.Errorf("could not enable WAL mode: %w", err)
 	}
 
+	// Allow up to 5 s of retries when another process holds the write lock,
+	// which happens when the registry server and background daemons run as
+	// separate processes against the same SQLite file.
+	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("could not set busy timeout: %w", err)
+	}
+
 	return db, nil
 }
 
