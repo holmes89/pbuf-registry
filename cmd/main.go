@@ -1,15 +1,14 @@
 package main
 
 import (
-	"context"
 	"os"
 
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/log"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pbufio/pbuf-registry/internal/background"
 	"github.com/pbufio/pbuf-registry/internal/config"
 	"github.com/pbufio/pbuf-registry/internal/data"
+	_ "github.com/pbufio/pbuf-registry/internal/data/sqlite" // register sqlite driver
 	"github.com/pbufio/pbuf-registry/internal/server"
 )
 
@@ -39,22 +38,17 @@ func main() {
 	logger := log.DefaultLogger
 	logHelper := log.NewHelper(logger)
 
-	pool, err := pgxpool.New(context.Background(), config.Cfg.Data.Database.DSN)
+	repos, closeDB, err := data.Open(config.Cfg.Data.Database.Driver, config.Cfg.Data.Database.DSN, logger)
 	if err != nil {
-		logHelper.Errorf("failed to connect to database: %v", err)
+		logHelper.Errorf("failed to open database: %v", err)
 		return
 	}
-	defer pool.Close()
+	defer closeDB()
 
-	registryRepository := data.NewRegistryRepository(pool, logger)
-	metadataRepository := data.NewMetadataRepository(pool, logger)
-	userRepository := data.NewUserRepository(pool, logger)
-	aclRepository := data.NewACLRepository(pool, logger)
-	driftRepository := data.NewDriftRepository(pool, logger)
-	registryServer := server.NewRegistryServer(registryRepository, metadataRepository, logger)
-	metadataServer := server.NewMetadataServer(registryRepository, metadataRepository, logger)
-	usersServer := server.NewUsersServer(userRepository, aclRepository, logger)
-	driftServer := server.NewDriftServer(driftRepository, logger)
+	registryServer := server.NewRegistryServer(repos.Registry, repos.Metadata, logger)
+	metadataServer := server.NewMetadataServer(repos.Registry, repos.Metadata, logger)
+	usersServer := server.NewUsersServer(repos.Users, repos.ACL, logger)
+	driftServer := server.NewDriftServer(repos.Drift, logger)
 
 	app := kratos.New(
 		kratos.ID(id),
@@ -63,8 +57,8 @@ func main() {
 		kratos.Metadata(map[string]string{}),
 		kratos.Logger(logger),
 		kratos.Server(
-			server.NewGRPCServer(&config.Cfg.Server, registryServer, metadataServer, usersServer, driftServer, userRepository, aclRepository, logger),
-			server.NewHTTPServer(&config.Cfg.Server, registryServer, metadataServer, usersServer, driftServer, userRepository, aclRepository, logger),
+			server.NewGRPCServer(&config.Cfg.Server, registryServer, metadataServer, usersServer, driftServer, repos.Users, repos.ACL, logger),
+			server.NewHTTPServer(&config.Cfg.Server, registryServer, metadataServer, usersServer, driftServer, repos.Users, repos.ACL, logger),
 			server.NewDebugServer(&config.Cfg.Server, logger),
 		),
 	)
@@ -86,8 +80,8 @@ func main() {
 		mainApp:  app,
 		debugApp: debugApp,
 
-		compactionDaemon:   background.NewCompactionDaemon(registryRepository, logger),
-		protoParsingDaemon: background.NewProtoParsingDaemon(metadataRepository, driftRepository, logger),
+		compactionDaemon:   background.NewCompactionDaemon(repos.Registry, logger),
+		protoParsingDaemon: background.NewProtoParsingDaemon(repos.Metadata, repos.Drift, logger),
 	}
 
 	err = CreateRootCommand(launcher).Execute()
