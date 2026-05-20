@@ -1,7 +1,7 @@
 API_PATH=api/pbuf-registry
 REGISTRY_VERSION?=latest
 
-.PHONY: init
+.PHONY: init hooks
 # init env
 init:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
@@ -12,52 +12,52 @@ init:
 	go install github.com/vektra/mockery/v2@latest
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.7.2
 
-.PHONY: vendor
+.PHONY: vendor hooks
 # vendor modules
 vendor:
 	pbuf vendor
 
-.PHONY: vendor-gen
+.PHONY: vendor-gen hooks
 # gen modules
 vendor-gen:
 	buf generate --template buf.modules.gen.yaml --exclude-path ${API_PATH} --exclude-path third_party/google
 
-.PHONY: vendor-all
+.PHONY: vendor-all hooks
 vendor-all:
 	make vendor
 	make vendor-gen
 
-.PHONY: api
+.PHONY: api hooks
 # generate api proto
 api:
 	buf generate --path ${API_PATH} --exclude-path third_party/google
 
-.PHONY: lint
+.PHONY: lint hooks
 # lint
 lint:
 	golangci-lint run -v --timeout 10m
 
-.PHONY: mocks
+.PHONY: mocks hooks
 # generate mocks
 mocks:
 	mockery --all --dir=internal --output=internal/mocks --case=underscore
 
-.PHONY: test
+.PHONY: test hooks
 # tests
 test:
 	go test -cover --race ./...
 
-.PHONY: build
+.PHONY: build hooks
 # build
 build:
 	mkdir -p bin/ && go build -o ./bin/pbuf-registry ./cmd/...
 
-.PHONY: build-migrations
+.PHONY: build-migrations hooks
 # build migrations
 build-migrations:
 	mkdir -p bin/ && go build -o ./bin/pbuf-migrations ./.
 
-.PHONY: build-in-docker
+.PHONY: build-in-docker hooks
 # build in docker
 build-in-docker:
 	docker run --rm \
@@ -68,37 +68,37 @@ build-in-docker:
       golang:1.25 \
       sh -c "CGO_ENABLED=0 GOOS=linux make build && CGO_ENABLED=0 GOOS=linux make build-migrations"
 
-.PHONY: docker
+.PHONY: docker hooks
 # docker
 docker:
 	docker build -t registry.digitalocean.com/pbuf/registry:${REGISTRY_VERSION} .
 
-.PHONY: build-docker
+.PHONY: build-docker hooks
 # build-docker
 build-docker:
 	docker build -t ghcr.io/pbufio/registry:${REGISTRY_VERSION} .
 
-.PHONY: run
+.PHONY: run hooks
 # run
 run:
 	docker-compose -f docker-compose.dev.yml build && docker-compose -f docker-compose.dev.yml up --force-recreate -d
 
-.PHONY: stop
+.PHONY: stop hooks
 # stop
 stop:
 	docker-compose -f docker-compose.dev.yml down
 
-.PHONY: cert-gen
+.PHONY: cert-gen hooks
 # generate cert
 cert-gen:
 	./scripts/cert-gen.sh
 
-.PHONY: run-prod
+.PHONY: run-prod hooks
 # run prod
 run-prod:
 	docker-compose -f docker-compose.yml up --force-recreate -d
 
-.PHONY: stop-prod
+.PHONY: stop-prod hooks
 # stop prod
 stop-prod:
 	docker-compose -f docker-compose.yml down
@@ -121,3 +121,7 @@ help:
 	{ lastLine = $$0 }' $(MAKEFILE_LIST)
 
 .DEFAULT_GOAL := help
+
+hooks:
+	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit .githooks/pre-push

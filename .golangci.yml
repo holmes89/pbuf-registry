@@ -1,0 +1,21 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - misspell
+    - unused
+  exclusions:
+    rules:
+      - path: lib/schemas/
+        linters:
+          - errcheck
+          - unused
+          - staticcheck
+      - path: _test\.go
+        linters:
+          - errcheck

@@ -344,3 +344,18 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 - Run `make run` to start the registry and test it.
 - Run `make stop` to stop the running registry.
+
+## Development Setup
+
+### Git Hooks
+
+This repo ships pre-commit and pre-push hooks in `.githooks/`.
+
+- **pre-commit**: runs `go vet` and `golangci-lint` before every commit
+- **pre-push**: runs `go test -race ./...` before every push
+
+Install once per checkout:
+
+```sh
+make hooks
+```
