@@ -1,0 +1,12 @@
+# Ids only; addresses and credentials stay in ~/.config/jh/config.yaml.
+# narwhal: which product this repo's docs belong to.
+version: 1
+portal: https://joel.holmes.haus
+product:
+  uuid: aa14cb8f-ba36-5afe-abc9-40d26b422f89
+  slug: joel.holmes.haus
+docs:
+  dir: docs
+  kinds:
+    features: feature
+  authority: git   # doc bodies; narwhal holds ids and status
